@@ -1,0 +1,26 @@
+{
+  "name": "imagem-prd-backend",
+  "version": "1.0.0",
+  "description": "Backend completo para o banco Imagem_prd",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "joi": "^17.9.2",
+    "mongoose": "^8.18.1",
+    "multer": "^2.0.2",
+    "sequelize": "^6.33.0",
+    "tedious": "^16.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
