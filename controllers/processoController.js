@@ -1,15 +1,15 @@
 const { pool, sql } = require('../db');
 
 exports.createProcesso = async (req, res) => {
-    const { Nome, criado_por } = req.body;
+    const { codigo, criado_por } = req.body;
     try {
         const ps = await pool;
         const result = await ps.request()
-            .input('Nome', sql.VarChar(99), Nome)
+            .input('codigo', sql.VarChar(99), Nome)
             .input('criado_por', sql.Int, criado_por)
-            .query('INSERT INTO ProcessoReferenciaTP (Nome, criado_em, criado_por) VALUES (@Nome, GETDATE(), @criado_por); SELECT SCOPE_IDENTITY() AS id');
+            .query('INSERT INTO ProcessoReferenciaTP (codigo, criado_em, criado_por) VALUES (@codigo, GETDATE(), @criado_por); SELECT SCOPE_IDENTITY() AS id');
 
-        res.json({ id: result.recordset[0].id, Nome });
+        res.json({ id: result.recordset[0].id, codigo });
     } catch (err) {
         console.error('[ERROR][CREATE] Processo', err.message);
         res.status(500).json({ error: err.message });
