@@ -1,40 +1,42 @@
-// server.js
-const express = require("express");
-const bodyParser = require("body-parser");
-const dotenv = require("dotenv");
-const cors = require("cors");
-
-// Importa as rotas
-const processoRoutes = require("./routes/processoRoutes");
-const modeloRoutes = require("./routes/modeloRoutes");
-const partePecaRoutes = require("./routes/partePecaRoutes");
-const variacaoRoutes = require("./routes/variacaoRoutes");
-const atividadeRoutes = require("./routes/atividadesRoutes");
-const posicaoRoutes = require("./routes/posicaoRoutes");
-const tecidoRoutes = require("./routes/tecidoRoutes");
-
-dotenv.config();
-const app = express();
-
-// Middlewares
-app.use(cors());
-app.use(bodyParser.json());
+import express from 'express';
+import cors from 'cors';
 
 // Rotas
-app.use("/api/processos", processoRoutes);
-app.use("/api/modelos", modeloRoutes);
-app.use("/api/pecas", partePecaRoutes);
-app.use("/api/variacoes", variacaoRoutes);
-app.use("/api/atividades", atividadeRoutes);
-app.use("/api/posicoes", posicaoRoutes);
-app.use("/api/tecidos", tecidoRoutes);
+import relatorioLDRoutes from './routes/relatorioLDRoutes.js';
+import relatorioCMPRoutes from './routes/relatorioCMPRoutes.js';
+import usuarioRoutes from './routes/usuarioRoutes.js';
+import historicoRoutes from './routes/historicoRoutes.js';
+import roleRoutes from './routes/roleRoutes.js';
+import historicoProducaoRoutes from './routes/HistoricoProducaoRoutes.js';
+import relatorioCRoutes from './routes/relatorioCRoutes.js';
+import relatorioPRRoutes from './routes/relatorioPRRoutes.js';
+import tpRoutes from './Routes/tpRoutes.js';
+import allTablesInsertRoutes from "./Routes/allTablesRoutes.js";
+const app = express();
+const PORT = 1561;
+const HOST = '0.0.0.0';
 
-// Health check
-app.get("/", (req, res) => {
-  res.json({ message: "API funcionando com SQL Server 🚀" });
-});
-const PORT = 1241
-// Inicialização do servidor
-app.listen(PORT,() => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+// Middlewares
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'PUT', 'POST', 'DELETE', 'PATCH'],
+    allowedHeaders: ['Content-Type']
+}));
+app.use(express.json());
+
+// Rotas da API
+app.use('/api/roles', roleRoutes);
+app.use('/api/relatorioLD', relatorioLDRoutes);
+app.use('/api/relatorioCMP', relatorioCMPRoutes);
+app.use('/api/usuarios', usuarioRoutes);
+app.use('/qualidade/api/historico', historicoRoutes);
+app.use('/api/relatorioC', relatorioCRoutes);
+app.use('/api/relatorioPR', relatorioPRRoutes);
+app.use('/api/HistoricoProducao', historicoProducaoRoutes);
+
+app.use('/api', allTablesInsertRoutes);
+app.use('/api/tp', tpRoutes);
+// Inicializa o servidor
+app.listen(PORT, HOST, () => {
+    console.log(`Servidor rodando em: http://${HOST}:${PORT}`);
 });
