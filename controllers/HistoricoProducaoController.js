@@ -90,7 +90,7 @@ export const update = async (req, res) => {
         const request = pool.request().input('historico_id', mssql.Int, id);
         
         let setClauses = [];
-        const updatableFields = ['registro_id', 'hora', 'previsto', 'real', 'retrabalho', 'operacao', 'referencia', 'TempoPeca', 'pessoasCelula', 'tempoAcabamento', 'pessoaAcabamento', 'custoFaccao'];
+        const updatableFields = ['registro_id', 'hora', 'previsto', 'real', 'retrabalho', 'operacao', 'referencia', 'TempoPeca', 'pessoasCelula', 'tempoAcabamento', 'pessoaAcabamento', 'custoFaccao', 'tempoPrevisto', 'tempoRealizado'];
         let updatedCount = 0;
 
         for (const field of updatableFields) {
@@ -98,7 +98,7 @@ export const update = async (req, res) => {
                 let type;
                 if (['registro_id', 'previsto', 'real', 'retrabalho', 'pessoasCelula', 'pessoaAcabamento'].includes(field)) {
                     type = mssql.Int;
-                } else if (['TempoPeca', 'tempoAcabamento', 'custoFaccao'].includes(field)) {
+                } else if (['TempoPeca', 'tempoAcabamento', 'custoFaccao', 'tempoPrevisto', 'tempoRealizado'].includes(field)) {
                     type = mssql.Decimal(10, 2); 
                 } else if (field === 'hora') {
                     type = mssql.DateTime; 
