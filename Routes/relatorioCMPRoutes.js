@@ -134,32 +134,86 @@ router.post("/generate", async (req, res) => {
     // Executa o INSERT
     await pool.request()
       .query(`
-        INSERT INTO IMAGEMUNIFORMES_pBI.dbo.RelatorioCMP
-          (LOTE, Ordem, [ID MATERIA PRIMA], Material_Ref_Id, [Material Referência],
-           Unidade, [Preço de Custo], [Quantidade Material Previsto], [QTD REAL],
-           [Grupo do Material Ref], mesAno, Cliente)
-        SELECT
-          p.lote,
-          p.ordem,
-          M.Material_Id,
-          M.Material_Ref_Id,
-          M.Descricao_Material,
-          MAX(M.Unidade_Venda_Consumo),
-          AVG(M.custo_preco),
-          SUM(CASE WHEN o.Tipo_Operacao='Material Previsto' THEN CAST(p.quantidade AS FLOAT) ELSE 0 END),
-          SUM(p.Qtd_Material_Gasto),
-          gmr.nome,
-          GETDATE(),
-          cm.Marca
-        FROM producao p
-        INNER JOIN material M ON M.Material_Id = p.material_id
-        INNER JOIN Operacao o ON o.Operacao_Id = p.operacao_id
-        INNER JOIN Cad_referencia cr ON cr.cad_referencia_id = p.CAD_Referencia_Id 
-        INNER JOIN Cad_marca cm ON cm.CAD_Marca_Id = cr.CAD_Marca_Id 
-        LEFT JOIN Material_Ref mr ON mr.Material_Ref_Id = M.Material_Ref_Id
-        LEFT JOIN Grupo_Material_Ref gmr ON gmr.Grupo_Material_Ref_Id = mr.Grupo_Material_Ref_Id
-        WHERE p.lote IS NOT NULL AND gmr.grupo_material_ref_id = 5
-        GROUP BY p.lote, p.ordem, M.Material_Id, M.Material_Ref_Id, M.Descricao_Material, gmr.nome, cm.Marca
+        WITH BaseProducao AS (
+            SELECT lote, ordem, cad_referencia_id, tamanho, operacao_id, Quantidade, cad_setor_id
+            FROM Producao
+            WHERE lote IS NOT NULL
+              AND operacao_id IN ('PEA','P','ES','OE','R','ID','MI')
+        ),
+        QtdEntraSaiExped AS (
+            SELECT lote, ordem, cad_referencia_id, tamanho,
+                SUM(CASE 
+                        WHEN ts.CAD_Setor_Tipo_Id = 12 AND tp.Tipo_Operacao = 'IDS' THEN CAST(p.Quantidade AS INT)
+                        WHEN p.cad_setor_id IS NULL AND tp.Tipo_Operacao = 'IDS' THEN CAST(p.Quantidade AS INT)
+                        ELSE 0
+                    END) AS Qtd_Entra_Sai_Exped
+            FROM BaseProducao p
+            LEFT JOIN cad_setor cs ON cs.CAD_Setor_Id = p.cad_setor_id
+            LEFT JOIN CAD_Setor_Tipo ts ON ts.CAD_Setor_Tipo_Id = cs.CAD_Setor_Tipo_Id
+            LEFT JOIN operacao tp ON tp.operacao_id = p.operacao_id
+            GROUP BY lote, ordem, cad_referencia_id, tamanho
+        ),
+        UltDataExped AS (
+            SELECT lote, MAX(Data_Conclusao_Expedicao) AS UltDataExpedicao, MAX(Lanc_Documento_Id) AS lanc_identificador
+            FROM VDA_Ped_Dev_Can
+            GROUP BY lote
+        )
+INSERT INTO IMAGEMUNIFORMES_pBI.dbo.RelatorioCMP
+(
+    LOTE, 
+    Ordem, 
+    [ID MATERIA PRIMA], 
+    Material_Ref_Id, 
+    [Material Referência],
+    Unidade, 
+    [Preço de Custo], 
+    [Quantidade Material Previsto], 
+    [QTD REAL],
+    [Grupo do Material Ref], 
+    mesAno, 
+    Cliente
+)
+SELECT
+    p.lote,
+    p.ordem,
+    M.Material_Id AS [ID MATERIA PRIMA],
+    M.Material_Ref_Id,
+    M.Descricao_Material AS [Material Referência],
+    MAX(M.Unidade_Venda_Consumo) AS Unidade,
+    AVG(M.custo_preco) AS [Preço de Custo],
+    SUM(CASE WHEN o.Tipo_Operacao = 'Material Previsto' THEN CAST(p.quantidade AS FLOAT) ELSE 0 END) AS [Quantidade Material Previsto],
+    SUM(p.Qtd_Material_Gasto) AS [QTD REAL],
+    gmr.nome AS [Grupo do Material Ref],
+    ud.UltDataExpedicao,
+    cm.Marca AS Cliente
+FROM producao p
+    INNER JOIN material M 
+        ON M.Material_Id = p.material_id
+    INNER JOIN Operacao o 
+        ON o.Operacao_Id = p.operacao_id
+    INNER JOIN Cad_referencia cr 
+        ON cr.cad_referencia_id = p.CAD_Referencia_Id 
+    INNER JOIN Cad_marca cm 
+        ON cm.CAD_Marca_Id = cr.CAD_Marca_Id 
+    LEFT JOIN Material_Ref mr 
+        ON mr.Material_Ref_Id = M.Material_Ref_Id
+    LEFT JOIN Grupo_Material_Ref gmr 
+        ON gmr.Grupo_Material_Ref_Id = mr.Grupo_Material_Ref_Id
+    LEFT JOIN UltDataExped ud ON ud.lote = p.lote
+WHERE 
+    p.lote IS NOT NULL 
+    AND gmr.grupo_material_ref_id = 5
+GROUP BY 
+    p.lote, 
+    p.ordem, 
+    M.Material_Id, 
+    M.Material_Ref_Id, 
+    M.Descricao_Material, 
+    gmr.nome, 
+    cm.Marca, 
+    ud.UltDataExpedicao
+ORDER BY 
+    p.lote;
       `);
 
     res.json({ success: true, message: "Registros CMP gerados com sucesso" });

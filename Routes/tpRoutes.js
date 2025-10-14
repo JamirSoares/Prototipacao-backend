@@ -1,7 +1,24 @@
 import express from "express";
 import { connectDB, mssql } from "../config/db.js";
+import multer from "multer";
+import path from "path";
 
 const router = express.Router();
+// Upload configuration for variation images
+const assetsDir = path.resolve(process.cwd(), 'config', 'assets');
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, assetsDir),
+  filename: (req, file, cb) => {
+    try {
+      const nomeVar = String(req.body.nome || 'variacao').replace(/[^a-z0-9-_]/gi, '_');
+      const ext = path.extname(file.originalname || '').toLowerCase() || '.jpg';
+      cb(null, `${nomeVar}${ext}`);
+    } catch {
+      cb(null, `variacao_${Date.now()}.jpg`);
+    }
+  }
+});
+const upload = multer({ storage });
 
 // Helpers
 const ok = (res, data) => res.json(data);
@@ -169,7 +186,7 @@ router.get("/variacao", async (req, res) => {
     const pool = await connectDB();
     const request = pool.request();
     const { pecaId } = req.query;
-    let query = "SELECT id, nome, id_peca FROM dbo.imagem_variacao_tp";
+    let query = "SELECT id, nome, id_peca, img_path FROM dbo.imagem_variacao_tp";
     if (pecaId) {
       request.input("pecaId", mssql.Int, Number(pecaId));
       query += " WHERE id_peca=@pecaId";
@@ -188,7 +205,7 @@ router.get("/variacao/:id", async (req, res) => {
     const result = await pool
       .request()
       .input("id", mssql.Int, Number(req.params.id))
-      .query("SELECT id, nome, id_peca FROM dbo.imagem_variacao_tp WHERE id=@id");
+      .query("SELECT id, nome, id_peca, img_path FROM dbo.imagem_variacao_tp WHERE id=@id");
     if (result.recordset.length === 0) return res.status(404).json({ error: "Variação não encontrada" });
     ok(res, result.recordset[0]);
   } catch (e) {
@@ -196,7 +213,7 @@ router.get("/variacao/:id", async (req, res) => {
   }
 });
 
-router.post("/variacao", async (req, res) => {
+router.post("/variacao", upload.single('imagem'), async (req, res) => {
   const { nome, id_peca } = req.body;
   try {
     const pool = await connectDB();
@@ -204,14 +221,15 @@ router.post("/variacao", async (req, res) => {
       .request()
       .input("nome", mssql.VarChar(99), nome ?? null)
       .input("id_peca", mssql.Int, id_peca ?? null)
-      .query("INSERT INTO dbo.imagem_variacao_tp (nome, id_peca) OUTPUT INSERTED.* VALUES (@nome, @id_peca)");
+      .input("img_path", mssql.VarChar(255), req.file ? `/assets/${req.file.filename}` : null)
+      .query("INSERT INTO dbo.imagem_variacao_tp (nome, id_peca, img_path) OUTPUT INSERTED.* VALUES (@nome, @id_peca, @img_path)");
     ok(res, result.recordset[0]);
   } catch (e) {
     err500(res, "Erro ao criar variação", e);
   }
 });
 
-router.put("/variacao/:id", async (req, res) => {
+router.put("/variacao/:id", upload.single('imagem'), async (req, res) => {
   const { nome, id_peca } = req.body;
   try {
     const pool = await connectDB();
@@ -220,7 +238,8 @@ router.put("/variacao/:id", async (req, res) => {
       .input("id", mssql.Int, Number(req.params.id))
       .input("nome", mssql.VarChar(99), nome ?? null)
       .input("id_peca", mssql.Int, id_peca ?? null)
-      .query("UPDATE dbo.imagem_variacao_tp SET nome=@nome, id_peca=@id_peca WHERE id=@id; SELECT * FROM dbo.imagem_variacao_tp WHERE id=@id");
+      .input("img_path", mssql.VarChar(255), req.file ? `/assets/${req.file.filename}` : null)
+      .query("UPDATE dbo.imagem_variacao_tp SET nome=@nome, id_peca=@id_peca, img_path=COALESCE(@img_path, img_path) WHERE id=@id; SELECT * FROM dbo.imagem_variacao_tp WHERE id=@id");
     ok(res, result.recordset[0] ?? null);
   } catch (e) {
     err500(res, "Erro ao atualizar variação", e);
@@ -375,8 +394,8 @@ router.post("/processo", async (req, res) => {
     const plan_incio = toFloat(body.plan_inicio ?? body.plan_incio);
 
     // ===== Cálculos de fórmulas (autoritativo no backend)
-    const CUSTO_MINUTO = 0.37;
-    const JORNADA_MINUTOS = 513; // 08:33
+    const CUSTO_MINUTO = body.custo_minuto ? Number(String(body.custo_minuto).replace(',', '.')) : 0.37;
+    const JORNADA_MINUTOS = body.jornada_minutos ? Number(body.jornada_minutos) : 513; // 08:33
     const tempoMinPorPeca = toFloat(body.tempo) ?? 0;
     const eficiencia = (toFloat(body.plan_eficiencia) ?? 0) / 100;
     const tipoPlano = String(body.plan_tipo_plan ?? "1"); // 1 Interna, 2 Externa
@@ -566,7 +585,7 @@ router.get("/clientes", async (_req, res) => {
   try {
     const pool = await connectDB();
     const result = await pool.request().query(
-      "SELECT Cad_empresa_cliente_id AS id, cliente FROM dbo.CAD_Empresa_Cliente ORDER BY cliente"
+      "select cgn.CAD_Grupo_Negocio_Id  AS id, cgn.Grupo_Negocio [cliente] from CAD_Empresa_Cliente cec inner join CAD_Grupo_Negocio cgn on cec.CAD_Grupo_Negocio_Id = cgn.CAD_Grupo_Negocio_Id"
     );
     ok(res, result.recordset);
   } catch (e) {
@@ -855,5 +874,49 @@ router.delete("/acabamento/:id", async (req, res) => {
 });
 
 export default router;
+
+// ===== tp_parametros (custo minuto, jornada etc.) =====
+router.get('/parametros', async (_req, res) => {
+  try {
+    const pool = await connectDB();
+    const rs = await pool.request().query('SELECT TOP 1 * FROM dbo.tp_parametros ORDER BY id DESC');
+    ok(res, rs.recordset[0] || null);
+  } catch (e) { err500(res, 'Erro ao buscar parâmetros', e); }
+});
+
+router.post('/parametros', async (req, res) => {
+  const b = req.body || {};
+  try {
+    const pool = await connectDB();
+    const r = pool.request();
+    const toFloat = (v) => v===''||v===undefined||v===null? null : Number(String(v).replace(',', '.'));
+    const toInt = (v) => v===''||v===undefined||v===null? null : parseInt(v, 10);
+    r.input('custo_minuto', mssql.Float, toFloat(b.custo_minuto));
+    r.input('j_inicio1', mssql.Time, b.j_inicio1 || null);
+    r.input('j_fim1', mssql.Time, b.j_fim1 || null);
+    r.input('j_inicio2', mssql.Time, b.j_inicio2 || null);
+    r.input('j_fim2', mssql.Time, b.j_fim2 || null);
+    r.input('j_inicio3', mssql.Time, b.j_inicio3 || null);
+    r.input('j_fim3', mssql.Time, b.j_fim3 || null);
+    r.input('total_dia_hhmm', mssql.VarChar(5), b.total_dia_hhmm || null);
+    r.input('jornada_horas', mssql.Float, toFloat(b.jornada_horas));
+    r.input('jornada_minutos', mssql.Int, toInt(b.jornada_minutos));
+    r.input('j_total_colab_hhmm', mssql.VarChar(5), b.jornada_total_colab_hhmm || null);
+    r.input('j_total_colab_horas', mssql.Float, toFloat(b.jornada_total_colab_horas));
+    r.input('j_total_colab_min', mssql.Int, toInt(b.jornada_total_colab_minutos));
+    const sql = `INSERT INTO dbo.tp_parametros (
+      custo_minuto, j_inicio1, j_fim1, j_inicio2, j_fim2, j_inicio3, j_fim3,
+      total_dia_hhmm, jornada_horas, jornada_minutos,
+      jornada_total_colab_hhmm, jornada_total_colab_horas, jornada_total_colab_minutos
+    ) OUTPUT INSERTED.* VALUES (
+      @custo_minuto, @j_inicio1, @j_fim1, @j_inicio2, @j_fim2, @j_inicio3, @j_fim3,
+      @total_dia_hhmm, @jornada_horas, @jornada_minutos,
+      @j_total_colab_hhmm, @j_total_colab_horas, @j_total_colab_min
+    )`;
+    const rs = await r.query(sql);
+    console.log(rs)
+    ok(res, rs.recordset[0]);
+  } catch (e) { err500(res, 'Erro ao criar parâmetros', e); }
+});
 
 

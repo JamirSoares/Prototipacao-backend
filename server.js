@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Rotas
 import relatorioLDRoutes from './routes/relatorioLDRoutes.js';
@@ -11,10 +13,11 @@ import historicoProducaoRoutes from './routes/HistoricoProducaoRoutes.js';
 import relatorioCRoutes from './routes/relatorioCRoutes.js';
 import relatorioPRRoutes from './routes/relatorioPRRoutes.js';
 import tpRoutes from './Routes/tpRoutes.js';
-import allTablesInsertRoutes from "./Routes/allTablesRoutes.js";
 const app = express();
 const PORT = 1561;
 const HOST = '0.0.0.0';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Middlewares
 app.use(cors({
@@ -23,6 +26,9 @@ app.use(cors({
     allowedHeaders: ['Content-Type']
 }));
 app.use(express.json());
+
+// Arquivos estáticos para imagens de variação
+app.use('/assets', express.static(path.join(__dirname, 'config', 'assets')));
 
 // Rotas da API
 app.use('/api/roles', roleRoutes);
@@ -34,7 +40,6 @@ app.use('/api/relatorioC', relatorioCRoutes);
 app.use('/api/relatorioPR', relatorioPRRoutes);
 app.use('/api/HistoricoProducao', historicoProducaoRoutes);
 
-app.use('/api', allTablesInsertRoutes);
 app.use('/api/tp', tpRoutes);
 // Inicializa o servidor
 app.listen(PORT, HOST, () => {
