@@ -758,7 +758,7 @@ router.get("/cronometragem", async (_req, res) => {
   try {
     const pool = await connectDB();
     const result = await pool.request().query(
-      "SELECT * FROM dbo.cronometragem ORDER BY id DESC"
+      "SELECT id, colaborador, tamanho, data, cronometrista, descritista, idModelo, criado_em FROM dbo.cronometragem ORDER BY id DESC"
     );
     ok(res, result.recordset);
   } catch (e) {
@@ -772,21 +772,22 @@ router.post("/cronometragem", async (req, res) => {
     const pool = await connectDB();
     const r = pool.request();
     const toInt = (v) => (v === undefined || v === null || v === "" ? null : Number.parseInt(v, 10));
-    const toFloat = (v) => {
-      if (v === undefined || v === null || v === "") return null;
-      const s = typeof v === "string" ? v.replace(/,/g, ".") : v;
-      const n = Number.parseFloat(s);
-      return Number.isNaN(n) ? null : n;
+    const toDate = (v) => {
+      if (!v) return null;
+      const d = new Date(v);
+      return Number.isNaN(d.getTime()) ? null : d;
     };
-    r.input("idDescritivo", mssql.Int, toInt(b.id_descritivo));
-    r.input("nPasses", mssql.Int, toInt(b.n_passes));
-    r.input("tempoObs", mssql.Float, toFloat(b.tempo_observado));
-    r.input("media", mssql.Float, toFloat(b.media));
-    r.input("indice", mssql.Float, toFloat(b.indice));
-    r.input("tolerancia", mssql.Float, toFloat(b.tolerancia));
-    const sql = `INSERT INTO dbo.cronometragem (idDescritivo, nPasses, tempoObservado, media, indice, tolerancia)
+    
+    r.input("colaborador", mssql.VarChar(99), b.colaborador ?? null);
+    r.input("tamanho", mssql.VarChar(10), b.tamanho ?? null);
+    r.input("data", mssql.Date, toDate(b.data));
+    r.input("cronometrista", mssql.VarChar(99), b.cronometrista ?? null);
+    r.input("descritista", mssql.VarChar(99), b.descritista ?? null);
+    r.input("idModelo", mssql.Int, toInt(b.idModelo));
+    
+    const sql = `INSERT INTO dbo.cronometragem (colaborador, tamanho, data, cronometrista, descritista, idModelo)
                  OUTPUT INSERTED.*
-                 VALUES (@idDescritivo, @nPasses, @tempoObs, @media, @indice, @tolerancia)`;
+                 VALUES (@colaborador, @tamanho, @data, @cronometrista, @descritista, @idModelo)`;
     const result = await r.query(sql);
     ok(res, result.recordset[0]);
   } catch (e) {
@@ -798,19 +799,39 @@ router.put("/cronometragem/:id", async (req, res) => {
   try {
     const pool = await connectDB();
     const r = pool.request();
+    const b = req.body ?? {};
     const id = Number(req.params.id);
+    const toInt = (v) => (v === undefined || v === null || v === "" ? null : Number.parseInt(v, 10));
+    const toDate = (v) => {
+      if (!v) return null;
+      const d = new Date(v);
+      return Number.isNaN(d.getTime()) ? null : d;
+    };
+    
     r.input('id', mssql.Int, id);
-    const fields = req.body || {};
-    const set = Object.keys(fields).map(k => `${k}=@${k}`).join(', ');
-    Object.entries(fields).forEach(([k,v])=> r.input(k, v));
-    const q = `UPDATE dbo.cronometragem SET ${set} WHERE id=@id; SELECT * FROM dbo.cronometragem WHERE id=@id`;
+    r.input("colaborador", mssql.VarChar(99), b.colaborador ?? null);
+    r.input("tamanho", mssql.VarChar(10), b.tamanho ?? null);
+    r.input("data", mssql.Date, toDate(b.data));
+    r.input("cronometrista", mssql.VarChar(99), b.cronometrista ?? null);
+    r.input("descritista", mssql.VarChar(99), b.descritista ?? null);
+    r.input("idModelo", mssql.Int, toInt(b.idModelo));
+    
+    const q = `UPDATE dbo.cronometragem SET 
+               colaborador=@colaborador, tamanho=@tamanho, data=@data, 
+               cronometrista=@cronometrista, descritista=@descritista, idModelo=@idModelo 
+               WHERE id=@id; 
+               SELECT * FROM dbo.cronometragem WHERE id=@id`;
     const rs = await r.query(q);
     ok(res, rs.recordset[0] || null);
   } catch (e) { err500(res, "Erro ao atualizar cronometragem", e); }
 });
 
 router.delete("/cronometragem/:id", async (req, res) => {
-  try { const pool = await connectDB(); await pool.request().input('id', mssql.Int, Number(req.params.id)).query('DELETE FROM dbo.cronometragem WHERE id=@id'); ok(res, {success:true}); }
+  try { 
+    const pool = await connectDB(); 
+    await pool.request().input('id', mssql.Int, Number(req.params.id)).query('DELETE FROM dbo.cronometragem WHERE id=@id'); 
+    ok(res, {success:true}); 
+  }
   catch (e) { err500(res, "Erro ao excluir cronometragem", e); }
 });
 

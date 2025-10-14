@@ -13,6 +13,7 @@ import historicoProducaoRoutes from './routes/HistoricoProducaoRoutes.js';
 import relatorioCRoutes from './routes/relatorioCRoutes.js';
 import relatorioPRRoutes from './routes/relatorioPRRoutes.js';
 import tpRoutes from './Routes/tpRoutes.js';
+import referenciaRoutes from './Routes/referenciaRoutes.js';
 const app = express();
 const PORT = 1561;
 const HOST = '0.0.0.0';
@@ -41,6 +42,7 @@ app.use('/api/relatorioPR', relatorioPRRoutes);
 app.use('/api/HistoricoProducao', historicoProducaoRoutes);
 
 app.use('/api/tp', tpRoutes);
+app.use('/api/referencias', referenciaRoutes);
 // Inicializa o servidor
 app.listen(PORT, HOST, () => {
     console.log(`Servidor rodando em: http://${HOST}:${PORT}`);

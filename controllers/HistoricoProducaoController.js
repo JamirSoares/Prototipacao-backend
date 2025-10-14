@@ -7,7 +7,7 @@ const ID_FIELD = 'historico_id';
 // --- CREATE (Criar novo registro) ---
 export const create = async (req, res) => {
     try {
-        const { registro_id, hora, previsto, real, retrabalho, operacao, referencia, TempoPeca, pessoasCelula, tempoAcabamento, pessoaAcabamento, custoFaccao } = req.body;
+        const { registro_id, hora, previsto, real, retrabalho, operacao, referencia, TempoPeca, pessoasCelula, tempoAcabamento, pessoaAcabamento, custoFaccao, tempoPrevisto, tempoRealizado } = req.body;
         const pool = await connectDB();
 
         const result = await pool.request()
@@ -23,10 +23,12 @@ export const create = async (req, res) => {
             .input('tempoAcabamento', mssql.Decimal(10, 2), tempoAcabamento)
             .input('pessoaAcabamento', mssql.Int, pessoaAcabamento)
             .input('custoFaccao', mssql.Decimal(10, 2), custoFaccao)
+            .input('tempoPrevisto', mssql.Decimal(10, 2), tempoPrevisto)
+            .input('tempoRealizado', mssql.Decimal(10, 2), tempoRealizado)
             .query(`
-                INSERT INTO ${TABLE_NAME} (registro_id, hora, previsto, [real], retrabalho, operacao, referencia, TempoPeca, pessoasCelula, tempoAcabamento, pessoaAcabamento, custoFaccao, atualizado_em)
+                INSERT INTO ${TABLE_NAME} (registro_id, hora, previsto, [real], retrabalho, operacao, referencia, TempoPeca, pessoasCelula, tempoAcabamento, pessoaAcabamento, custoFaccao, tempoPrevisto, tempoRealizado, atualizado_em)
                 OUTPUT INSERTED.${ID_FIELD}
-                VALUES (@registro_id, @hora, @previsto, @real, @retrabalho, @operacao, @referencia, @TempoPeca, @pessoasCelula, @tempoAcabamento, @pessoaAcabamento, @custoFaccao, GETDATE())
+                VALUES (@registro_id, @hora, @previsto, @real, @retrabalho, @operacao, @referencia, @TempoPeca, @pessoasCelula, @tempoAcabamento, @pessoaAcabamento, @custoFaccao, @tempoPrevisto, @tempoRealizado, GETDATE())
             `);
 
         const newId = result.recordset[0][ID_FIELD];
