@@ -11,8 +11,7 @@ router.get('/filters', controller.getFilterOptions);
 
 router.post('/bulk', controller.insertBulk);
 
-router.put('/:id', controller.updateById);  // <--- aqui é a rota de edição
-
+router.put('/:id', controller.updateById); 
 router.get('/:id', controller.getById);
 
 export default router;
