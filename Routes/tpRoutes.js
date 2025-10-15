@@ -585,7 +585,15 @@ router.get("/clientes", async (_req, res) => {
   try {
     const pool = await connectDB();
     const result = await pool.request().query(
-      "select cgn.CAD_Grupo_Negocio_Id  AS id, cgn.Grupo_Negocio [cliente] from CAD_Empresa_Cliente cec inner join CAD_Grupo_Negocio cgn on cec.CAD_Grupo_Negocio_Id = cgn.CAD_Grupo_Negocio_Id"
+      `SELECT 
+    MIN(cec.CAD_Grupo_Negocio_Id) AS id,
+    cgn.Grupo_Negocio AS [cliente]
+FROM CAD_Empresa_Cliente cec
+INNER JOIN CAD_Grupo_Negocio cgn 
+    ON cec.CAD_Grupo_Negocio_Id = cgn.CAD_Grupo_Negocio_Id
+GROUP BY 
+    cgn.Grupo_Negocio
+order by cgn.grupo_negocio`
     );
     ok(res, result.recordset);
   } catch (e) {
