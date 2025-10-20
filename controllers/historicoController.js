@@ -59,11 +59,9 @@ export const getHistorico = async (req, res) => {
     const pool = await poolPromise;
 
     const request = pool.request();
-    let whereStatus = "(status IS NULL OR status = 'A')";
     let whereDate = "";
 
     if (date) {
-      whereStatus = "(status IS NULL OR status IN ('A','I'))";
       request.input('date', sql.VarChar, date);
       // compara apenas a parte de data (formato 23 = YYYY-MM-DD)
       whereDate = " AND CONVERT(char(10), registro_producao.criado_em, 23) = @date";
@@ -76,7 +74,7 @@ export const getHistorico = async (req, res) => {
       FROM registro_producao
       LEFT JOIN historico_producao h ON h.registro_id = registro_producao.id
       LEFT JOIN referencia r ON r.nome = registro_producao.referencia
-      WHERE ${whereStatus}${whereDate}
+      WHERE 1=1 ${whereDate}
       ORDER BY registro_producao.id`;
 
     const result = await request.query(query);

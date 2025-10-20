@@ -196,7 +196,7 @@ router.post("/generate", async (req, res) => {
     await pool.request()
       .query(`
         INSERT INTO IMAGEMUNIFORMES_pBI.dbo.RelatorioPR
-          (lote, ordem, lote_marca, cad_referencia_id, descricao_referencia, qtd, vlr_serv_ref, valor_servico, status, conclusao, fornecedor_estoque, setor_tipo, tipo_operacao, created_at)
+          (lote, ordem, lote_marca, cad_referencia_id, descricao_referencia, qtd, vlr_serv_ref, valor_servico, status, conclusao, fornecedor_estoque, setor_tipo, processo, tipo_operacao, created_at)
         SELECT 
           p.lote,
           p.ordem,
@@ -211,6 +211,7 @@ router.post("/generate", async (req, res) => {
           cfe.Fornecedor_Estoque,
           cst.Descricao_Setor_Tipo,
           o.Operacao_id,
+          o.Tipo_Operacao,
           GETDATE()
         FROM producao p
         INNER JOIN CAD_Setor cs ON cs.CAD_Setor_id = p.CAD_Setor_id 
@@ -226,13 +227,27 @@ router.post("/generate", async (req, res) => {
           p.CAD_Referencia_id, cr.Descricao_Referencia,
           p.Valor_Servico_Referencia, p.Valor_Servico,
           sp.Descricao_Status, p.Data_Corte, cst.Descricao_Setor_Tipo,
-          cfe.Fornecedor_Estoque, o.Operacao_id
+          cfe.Fornecedor_Estoque, o.Operacao_id, o.Tipo_Operacao
       `);
 
-    res.json({ success: true, message: "Registros gerados com sucesso" });
+    res.json({ success: true, message: "🧵 Tecido costurado com sucesso! Relatórios prontos." });
   } catch (err) {
-    console.error("Erro ao gerar registros:", err);
-    res.status(500).json({ error: "Erro ao gerar registros" });
+    console.error("Erro ao gerar registros RelatorioPR:", err);
+    console.error("Detalhes do erro:", {
+      message: err.message,
+      code: err.code,
+      number: err.number,
+      state: err.state,
+      class: err.class,
+      serverName: err.serverName,
+      procName: err.procName,
+      lineNumber: err.lineNumber
+    });
+    res.status(500).json({ 
+      error: "🧵 Erro na costura do RelatorioPR", 
+      details: err.message,
+      code: err.code 
+    });
   }
 });
 

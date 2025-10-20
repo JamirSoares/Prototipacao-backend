@@ -39,14 +39,20 @@ export async function getById(req, res) {
 
 export async function create(req, res) {
   try {
-    const { nome_completo, usuario, senha, email, permissao_id } = req.body;
+    const { nome_completo, usuario, senha, email, permissao_id, status } = req.body;
     if (!nome_completo || !usuario || !senha || !email || !permissao_id) {
       return res.status(400).json({
         error: 'Campos obrigatórios ausentes: nome_completo, usuario, senha, email, permissao_id.'
       });
     }
 
-    const newUser = await service.create(req.body); // já vem com permissions[]
+    // Define status padrão como 'ativo' se não fornecido
+    const userData = {
+      ...req.body,
+      status: status || 'ativo'
+    };
+
+    const newUser = await service.create(userData); // já vem com permissions[]
     res.status(201).json(newUser);
   } catch (err) {
     console.error(err);
@@ -101,6 +107,11 @@ export async function login(req, res) {
 
     const user = await service.findByUsuario(usuario); // já vem com permissions[]
     if (!user) return res.status(401).json({ error: 'Usuário não encontrado.' });
+
+    // Verifica se o usuário está ativo
+    if (user.status && user.status !== 'ativo') {
+      return res.status(401).json({ error: 'Usuário inativo. Entre em contato com o administrador.' });
+    }
 
     const isMatch = await bcrypt.compare(senha, user.senha_hash);
     if (!isMatch) return res.status(401).json({ error: 'Senha incorreta.' });

@@ -62,7 +62,7 @@ router.post("/modelo", async (req, res) => {
       .request()
       .input("nome", mssql.VarChar(99), nome ?? null)
       .input("id_modelo", mssql.Int, id_modelo ?? null)
-      .query("INSERT INTO dbo.imagem_modelo_tp (nome, id_modelo) OUTPUT INSERTED.* VALUES (@nome, @id_modelo)");
+      .query("INSERT IntO dbo.imagem_modelo_tp (nome, id_modelo) OUTPUT INSERTED.* VALUES (@nome, @id_modelo)");
     ok(res, result.recordset[0]);
   } catch (e) {
     err500(res, "Erro ao criar modelo", e);
@@ -141,7 +141,7 @@ router.post("/peca", async (req, res) => {
       .input("id_peca", mssql.Int, id_peca ?? null)
       .input("id_modelo", mssql.Int, id_modelo ?? null)
       .query(
-        "INSERT INTO dbo.imagem_peca_tp (nome, tempo_padrao, valor_desconto, id_peca, id_modelo) OUTPUT INSERTED.* VALUES (@nome, @tempo_padrao, @valor_desconto, @id_peca, @id_modelo)"
+        "INSERT IntO dbo.imagem_peca_tp (nome, tempo_padrao, valor_desconto, id_peca, id_modelo) OUTPUT INSERTED.* VALUES (@nome, @tempo_padrao, @valor_desconto, @id_peca, @id_modelo)"
       );
     ok(res, result.recordset[0]);
   } catch (e) {
@@ -222,7 +222,7 @@ router.post("/variacao", upload.single('imagem'), async (req, res) => {
       .input("nome", mssql.VarChar(99), nome ?? null)
       .input("id_peca", mssql.Int, id_peca ?? null)
       .input("img_path", mssql.VarChar(255), req.file ? `/assets/${req.file.filename}` : null)
-      .query("INSERT INTO dbo.imagem_variacao_tp (nome, id_peca, img_path) OUTPUT INSERTED.* VALUES (@nome, @id_peca, @img_path)");
+      .query("INSERT IntO dbo.imagem_variacao_tp (nome, id_peca, img_path) OUTPUT INSERTED.* VALUES (@nome, @id_peca, @img_path)");
     ok(res, result.recordset[0]);
   } catch (e) {
     err500(res, "Erro ao criar variação", e);
@@ -287,45 +287,72 @@ router.get("/planejamento/:id", async (req, res) => {
 
 router.post("/planejamento", async (req, res) => {
   const { costura, preparo, acabamento, ideal, func, ideal_func, carga } = req.body;
+  console.log('🔵 [POST /planejamento] Iniciando criação de planejamento');
+  console.log('📥 Body recebido:', JSON.stringify(req.body, null, 2));
+  
   try {
     const pool = await connectDB();
+    const query = "INSERT IntO dbo.imagem_planejamento_tp (costura, preparo, acabamento, ideal, func, ideal_func, carga) OUTPUT INSERTED.* VALUES (@costura, @preparo, @acabamento, @ideal, @func, @ideal_func, @carga)";
+    console.log('📝 SQL Query:', query);
+    console.log('🔍 Parâmetros:', { costura, preparo, acabamento, ideal, func, ideal_func, carga });
+    
+    // Helpers para parse
+    const toInt = (v) => (v === undefined || v === null || v === "" ? null : Number.parseInt(v, 10));
+    const toFloat = (v) => (v === undefined || v === null || v === "" ? null : Number.parseFloat(v));
+
     const result = await pool
       .request()
-      .input("costura", mssql.Int, costura ?? null)
-      .input("preparo", mssql.Int, preparo ?? null)
-      .input("acabamento", mssql.Int, acabamento ?? null)
-      .input("ideal", mssql.Float, ideal ?? null)
-      .input("func", mssql.Int, func ?? null)
-      .input("ideal_func", mssql.Float, ideal_func ?? null)
-      .input("carga", mssql.Float, carga ?? null)
-      .query(
-        "INSERT INTO dbo.imagem_planejamento_tp (costura, preparo, acabamento, ideal, func, ideal_func, carga) OUTPUT INSERTED.* VALUES (@costura, @preparo, @acabamento, @ideal, @func, @ideal_func, @carga)"
-      );
+      .input("costura", mssql.Int, toInt(costura))
+      .input("preparo", mssql.Int, toInt(preparo))
+      .input("acabamento", mssql.Int, toInt(acabamento))
+      .input("ideal", mssql.Float, toFloat(ideal))
+      .input("func", mssql.Int, toInt(func))
+      .input("ideal_func", mssql.Float, toFloat(ideal_func))
+      .input("carga", mssql.Float, toFloat(carga))
+      .query(query);
+    
+    console.log('✅ Planejamento criado com sucesso:', result.recordset[0]);
     ok(res, result.recordset[0]);
   } catch (e) {
+    console.log('❌ [POST /planejamento] Erro ao criar planejamento:', e.message);
+    console.log('🔍 Detalhes do erro:', e);
     err500(res, "Erro ao criar planejamento", e);
   }
 });
 
 router.put("/planejamento/:id", async (req, res) => {
   const { costura, preparo, acabamento, ideal, func, ideal_func, carga } = req.body;
+  console.log('🔵 [PUT /planejamento/:id] Atualizando planejamento');
+  console.log('📥 Body recebido:', JSON.stringify(req.body, null, 2));
+  
   try {
     const pool = await connectDB();
+    
+    // Helpers para parse
+    const toInt = (v) => (v === undefined || v === null || v === "" ? null : Number.parseInt(v, 10));
+    const toFloat = (v) => (v === undefined || v === null || v === "" ? null : Number.parseFloat(v));
+    
+    const query = "UPDATE dbo.imagem_planejamento_tp SET costura=@costura, preparo=@preparo, acabamento=@acabamento, ideal=@ideal, func=@func, ideal_func=@ideal_func, carga=@carga WHERE id=@id; SELECT * FROM dbo.imagem_planejamento_tp WHERE id=@id";
+    console.log('📝 SQL Query:', query);
+    console.log('🔍 Parâmetros:', { id: Number(req.params.id), costura, preparo, acabamento, ideal, func, ideal_func, carga });
+    
     const result = await pool
       .request()
       .input("id", mssql.Int, Number(req.params.id))
-      .input("costura", mssql.Int, costura ?? null)
-      .input("preparo", mssql.Int, preparo ?? null)
-      .input("acabamento", mssql.Int, acabamento ?? null)
-      .input("ideal", mssql.Float, ideal ?? null)
-      .input("func", mssql.Int, func ?? null)
-      .input("ideal_func", mssql.Float, ideal_func ?? null)
-      .input("carga", mssql.Float, carga ?? null)
-      .query(
-        "UPDATE dbo.imagem_planejamento_tp SET costura=@costura, preparo=@preparo, acabamento=@acabamento, ideal=@ideal, func=@func, ideal_func=@ideal_func, carga=@carga WHERE id=@id; SELECT * FROM dbo.imagem_planejamento_tp WHERE id=@id"
-      );
+      .input("costura", mssql.Int, toInt(costura))
+      .input("preparo", mssql.Int, toInt(preparo))
+      .input("acabamento", mssql.Int, toInt(acabamento))
+      .input("ideal", mssql.Float, toFloat(ideal))
+      .input("func", mssql.Int, toInt(func))
+      .input("ideal_func", mssql.Float, toFloat(ideal_func))
+      .input("carga", mssql.Float, toFloat(carga))
+      .query(query);
+    
+    console.log('✅ Planejamento atualizado com sucesso:', result.recordset[0]);
     ok(res, result.recordset[0] ?? null);
   } catch (e) {
+    console.log('❌ [PUT /planejamento/:id] Erro ao atualizar planejamento:', e.message);
+    console.log('🔍 Detalhes do erro:', e);
     err500(res, "Erro ao atualizar planejamento", e);
   }
 });
@@ -344,13 +371,17 @@ router.delete("/planejamento/:id", async (req, res) => {
 // For simplicity, we expose full CRUD; due to many columns, keep 1:1 mapping.
 
 router.get("/processo", async (_req, res) => {
+  console.log('🔵 [GET /processo] Listando processos');
   try {
     const pool = await connectDB();
-    const result = await pool.request().query(
-      `SELECT id, nome_ref, cliente_id, tempo, custo_mo, plan_tipo_plan, plan_eficiencia, plan_qtd_pecas, plan_incio, plan_prod_diarias, plan_dias_necessarios, plan_termino, plan_max, plan_pecas_hora, plan_pecas_caixa, nome, val_componentes, val_maquinarios_id, val_jornada, val_total_ind, val_total_fac, val_dia_ind, val_dia_fac, val_horas_ind, val_horas_fac, val_min_ind, val_min_fac, val_descricao_modelo, val_modelo_id, val_tecido_id, val_parte_peca_id, val_variacao_id FROM dbo.imagem_processo_tp ORDER BY id DESC`
-    );
+    const query = `SELECT id, nome_ref, cliente_id, tempo, custo_mo, plan_tipo_plan, plan_eficiencia, plan_qtd_pecas, plan_incio, plan_prod_diarias, plan_dias_necessarios, plan_termino, plan_max, plan_pecas_hora, plan_pecas_caixa, val_nome, val_componentes, val_maquinarios_id, val_jornada, val_total_ind, val_total_fac, val_dia_ind, val_dia_fac, val_horas_ind, val_horas_fac, val_min_ind, val_min_fac, val_descricao_modelo, val_modelo_id, val_tecido_id, val_parte_peca_id, val_variacao_id FROM dbo.imagem_processo_tp ORDER BY id DESC`;
+    console.log('📝 SQL Query:', query);
+    const result = await pool.request().query(query);
+    console.log('✅ Processos listados com sucesso:', result.recordset.length, 'registros');
     ok(res, result.recordset);
   } catch (e) {
+    console.log('❌ [GET /processo] Erro ao listar processos:', e.message);
+    console.log('🔍 Detalhes do erro:', e);
     err500(res, "Erro ao listar processos", e);
   }
 });
@@ -362,7 +393,7 @@ router.get("/processo/:id", async (req, res) => {
       .request()
       .input("id", mssql.Int, Number(req.params.id))
       .query(
-        `SELECT id, nome_ref, cliente_id, tempo, custo_mo, plan_tipo_plan, plan_eficiencia, plan_qtd_pecas, plan_incio, plan_prod_diarias, plan_dias_necessarios, plan_termino, plan_max, plan_pecas_hora, plan_pecas_caixa, nome, val_componentes, val_maquinarios_id, val_jornada, val_total_ind, val_total_fac, val_dia_ind, val_dia_fac, val_horas_ind, val_horas_fac, val_min_ind, val_min_fac, val_descricao_modelo, val_modelo_id, val_tecido_id, val_parte_peca_id, val_variacao_id FROM dbo.imagem_processo_tp WHERE id=@id`
+        `SELECT id, nome_ref, cliente_id, tempo, custo_mo, plan_tipo_plan, plan_eficiencia, plan_qtd_pecas, plan_incio, plan_prod_diarias, plan_dias_necessarios, plan_termino, plan_max, plan_pecas_hora, plan_pecas_caixa, val_nome, val_componentes, val_maquinarios_id, val_jornada, val_total_ind, val_total_fac, val_dia_ind, val_dia_fac, val_horas_ind, val_horas_fac, val_min_ind, val_min_fac, val_descricao_modelo, val_modelo_id, val_tecido_id, val_parte_peca_id, val_variacao_id FROM dbo.imagem_processo_tp WHERE id=@id`
       );
     if (result.recordset.length === 0) return res.status(404).json({ error: "Processo não encontrado" });
     ok(res, result.recordset[0]);
@@ -373,6 +404,8 @@ router.get("/processo/:id", async (req, res) => {
 
 router.post("/processo", async (req, res) => {
   const body = req.body ?? {};
+  console.log('🔵 [POST /processo] Iniciando criação de processo');
+  console.log('📥 Body recebido:', JSON.stringify(body, null, 2));
   try {
     const pool = await connectDB();
     const r = pool.request();
@@ -442,7 +475,7 @@ router.post("/processo", async (req, res) => {
 
     // Bind all fields (nullable) com normalização
     r.input("nome_ref", mssql.VarChar(99), body.nome_ref ?? null);
-    r.input("cliente_id", mssql.VarChar(99), body.cliente_id ?? null);
+    r.input("cliente_id", mssql.Int, body.cliente_id ?? null);
     r.input("tempo", mssql.Int, toInt(body.tempo));
     r.input("custo_mo", mssql.Float, custo_mo);
     r.input("plan_tipo_plan", mssql.Float, toFloat(body.plan_tipo_plan));
@@ -455,7 +488,7 @@ router.post("/processo", async (req, res) => {
     r.input("plan_max", mssql.DateTime, toDate(body.plan_max));
     r.input("plan_pecas_hora", mssql.Int, plan_pecas_hora);
     r.input("plan_pecas_caixa", mssql.Float, toFloat(body.plan_pecas_caixa));
-    r.input("nome", mssql.Int, toInt(body.nome));
+    r.input("val_nome", mssql.VarChar(99), body.val_nome ?? null);
     r.input("val_componentes", mssql.VarChar(99), body.val_componentes ?? null);
     r.input("val_maquinarios_id", mssql.Int, toInt(body.val_maquinarios_id));
     r.input("val_jornada", mssql.Int, toInt(body.val_jornada));
@@ -474,9 +507,9 @@ router.post("/processo", async (req, res) => {
     r.input("val_variacao_id", mssql.Int, toInt(body.val_variacao_id));
 
     const insertSql = `
-      INSERT INTO dbo.imagem_processo_tp (
+      INSERT IntO dbo.imagem_processo_tp (
         nome_ref, cliente_id, tempo, custo_mo, plan_tipo_plan, plan_eficiencia, plan_qtd_pecas, plan_incio,
-        plan_prod_diarias, plan_dias_necessarios, plan_termino, plan_max, plan_pecas_hora, plan_pecas_caixa, nome,
+        plan_prod_diarias, plan_dias_necessarios, plan_termino, plan_max, plan_pecas_hora, plan_pecas_caixa, val_nome,
         val_componentes, val_maquinarios_id, val_jornada, val_total_ind, val_total_fac, val_dia_ind, val_dia_fac,
         val_horas_ind, val_horas_fac, val_min_ind, val_min_fac, val_descricao_modelo, val_modelo_id, val_tecido_id,
         val_parte_peca_id, val_variacao_id
@@ -484,14 +517,26 @@ router.post("/processo", async (req, res) => {
       OUTPUT INSERTED.*
       VALUES (
         @nome_ref, @cliente_id, @tempo, @custo_mo, @plan_tipo_plan, @plan_eficiencia, @plan_qtd_pecas, @plan_incio,
-        @plan_prod_diarias, @plan_dias_necessarios, @plan_termino, @plan_max, @plan_pecas_hora, @plan_pecas_caixa, @nome,
+        @plan_prod_diarias, @plan_dias_necessarios, @plan_termino, @plan_max, @plan_pecas_hora, @plan_pecas_caixa, @val_nome,
         @val_componentes, @val_maquinarios_id, @val_jornada, @val_total_ind, @val_total_fac, @val_dia_ind, @val_dia_fac,
         @val_horas_ind, @val_horas_fac, @val_min_ind, @val_min_fac, @val_descricao_modelo, @val_modelo_id, @val_tecido_id,
         @val_parte_peca_id, @val_variacao_id
       )`;
+    
+    console.log('📝 SQL Query:', insertSql);
+    console.log('🔍 Parâmetros principais:', {
+      nome_ref: body.nome_ref,
+      cliente_id: toInt(body.cliente_id),
+      tempo: toInt(body.tempo),
+      val_nome: body.val_nome
+    });
+    
     const result = await r.query(insertSql);
+    console.log('✅ Processo criado com sucesso:', result.recordset[0]);
     ok(res, result.recordset[0]);
   } catch (e) {
+    console.log('❌ [POST /processo] Erro ao criar processo:', e.message);
+    console.log('🔍 Detalhes do erro:', e);
     err500(res, "Erro ao criar processo", e);
   }
 });
@@ -520,7 +565,7 @@ router.put("/processo/:id", async (req, res) => {
 
     r.input("id", mssql.Int, Number(req.params.id));
     r.input("nome_ref", mssql.VarChar(99), body.nome_ref ?? null);
-    r.input("cliente_id", mssql.VarChar(99), body.cliente_id ?? null);
+    r.input("cliente_id", mssql.Int, body.cliente_id ?? null);
     r.input("tempo", mssql.Int, toInt(body.tempo));
     r.input("custo_mo", mssql.Float, toFloat(body.custo_mo));
     r.input("plan_tipo_plan", mssql.Float, toFloat(body.plan_tipo_plan));
@@ -533,7 +578,7 @@ router.put("/processo/:id", async (req, res) => {
     r.input("plan_max", mssql.DateTime, toDate(body.plan_max));
     r.input("plan_pecas_hora", mssql.Int, toInt(body.plan_pecas_hora));
     r.input("plan_pecas_caixa", mssql.Float, toFloat(body.plan_pecas_caixa));
-    r.input("nome", mssql.Int, toInt(body.nome));
+    r.input("val_nome", mssql.VarChar(99), body.val_nome ?? null);
     r.input("val_componentes", mssql.VarChar(99), body.val_componentes ?? null);
     r.input("val_maquinarios_id", mssql.Int, toInt(body.val_maquinarios_id));
     r.input("val_jornada", mssql.Int, toInt(body.val_jornada));
@@ -670,7 +715,7 @@ router.post("/calculadora", async (req, res) => {
     r.input("custoMin", mssql.Float, custo);
     r.input("pecasHora", mssql.Int, pecasHora);
 
-    const sql = `INSERT INTO dbo.calculadora (idModelo, idTecido, idPeca, idVariacao, tempoPadrao, valorDescontado, tempoFinal, custoMin, pecasHora)
+    const sql = `INSERT IntO dbo.calculadora (idModelo, idTecido, idPeca, idVariacao, tempoPadrao, valorDescontado, tempoFinal, custoMin, pecasHora)
                  OUTPUT INSERTED.*
                  VALUES (@idModelo, @idTecido, @idPeca, @idVariacao, @tempoPadrao, @valorDescontado, @tempoFinal, @custoMin, @pecasHora)`;
     const result = await r.query(sql);
@@ -731,7 +776,7 @@ router.post("/descritivo", async (req, res) => {
     r.input("tempoRelogio", mssql.VarChar(20), b.tempo_relogio ?? b.tempoRelogio ?? null);
     r.input("tempoCent", mssql.Float, toFloat(b.tempo_cent ?? b.tempoCent));
     r.input("postoDeTrabalho", mssql.VarChar(100), b.posto_trabalho ?? b.postoDeTrabalho ?? null);
-    const sql = `INSERT INTO dbo.descritivo (idModelo, idTecido, nomeAtividade, tempoRelogio, tempoCent, postoDeTrabalho)
+    const sql = `INSERT IntO dbo.descritivo (idModelo, idTecido, nomeAtividade, tempoRelogio, tempoCent, postoDeTrabalho)
                  OUTPUT INSERTED.*
                  VALUES (@idModelo, @idTecido, @nomeAtividade, @tempoRelogio, @tempoCent, @postoDeTrabalho)`;
     const result = await r.query(sql);
@@ -793,7 +838,7 @@ router.post("/cronometragem", async (req, res) => {
     r.input("descritista", mssql.VarChar(99), b.descritista ?? null);
     r.input("idModelo", mssql.Int, toInt(b.idModelo));
     
-    const sql = `INSERT INTO dbo.cronometragem (colaborador, tamanho, data, cronometrista, descritista, idModelo)
+    const sql = `INSERT IntO dbo.cronometragem (colaborador, tamanho, data, cronometrista, descritista, idModelo)
                  OUTPUT INSERTED.*
                  VALUES (@colaborador, @tamanho, @data, @cronometrista, @descritista, @idModelo)`;
     const result = await r.query(sql);
@@ -872,7 +917,7 @@ router.post("/acabamento", async (req, res) => {
     r.input("nome", mssql.VarChar(200), b.nome ?? null);
     r.input("tempo", mssql.Float, toFloat(b.tempo));
     r.input("responsavel", mssql.VarChar(100), b.responsavel ?? null);
-    const sql = `INSERT INTO dbo.acabamento (idModelo, nome, tempo, responsavel)
+    const sql = `INSERT IntO dbo.acabamento (idModelo, nome, tempo, responsavel)
                  OUTPUT INSERTED.*
                  VALUES (@idModelo, @nome, @tempo, @responsavel)`;
     const result = await r.query(sql);
@@ -933,7 +978,7 @@ router.post('/parametros', async (req, res) => {
     r.input('j_total_colab_hhmm', mssql.VarChar(5), b.jornada_total_colab_hhmm || null);
     r.input('j_total_colab_horas', mssql.Float, toFloat(b.jornada_total_colab_horas));
     r.input('j_total_colab_min', mssql.Int, toInt(b.jornada_total_colab_minutos));
-    const sql = `INSERT INTO dbo.tp_parametros (
+    const sql = `INSERT IntO dbo.tp_parametros (
       custo_minuto, j_inicio1, j_fim1, j_inicio2, j_fim2, j_inicio3, j_fim3,
       total_dia_hhmm, jornada_horas, jornada_minutos,
       jornada_total_colab_hhmm, jornada_total_colab_horas, jornada_total_colab_minutos

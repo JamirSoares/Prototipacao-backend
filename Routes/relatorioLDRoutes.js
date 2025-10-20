@@ -144,12 +144,12 @@ router.post("/generate", async (req, res) => {
             GROUP BY lote, ordem, cad_referencia_id, tamanho
         ),
         UltDataExped AS (
-            SELECT lote, MAX(Data_Conclusao_Expedicao) AS UltDataExpedicao, MAX(Lanc_Documento_Id) AS lanc_identificador
+            SELECT lote, MAX(Data_Conclusao_Expedicao) AS UltDataExpedicao
             FROM VDA_Ped_Dev_Can
             GROUP BY lote
         )
         INSERT INTO RelatorioLD
-          (Lote, ordem, referencia, marcaDaReferencia, marca, tamanho, geradaConferencia, expedicao, media, MesAno, lanc_id, Cliente)
+          (Lote, ordem, referencia, marcaDaReferencia, marca, tamanho, geradaConferencia, expedicao, media, MesAno, Cliente)
         SELECT
             p.lote,
             p.ordem,
@@ -160,8 +160,7 @@ router.post("/generate", async (req, res) => {
             CAST(ROUND(t1.QtdEsperadoP_Sep2, 0) AS INT),
             qe.Qtd_Entra_Sai_Exped,
             cr.venda_valor,
-            ud.UltDataExpedicao,
-            ud.lanc_identificador,
+             CONVERT(VARCHAR(10), ud.ultDataExpedicao, 23) AS ultDataExpedicao,
             cm.Marca
         FROM (
             SELECT lote, ordem, cad_referencia_id, tamanho
@@ -181,7 +180,7 @@ router.post("/generate", async (req, res) => {
         LEFT JOIN QtdEntraSaiExped qe
           ON qe.lote = p.lote AND qe.ordem = p.ordem AND qe.cad_referencia_id = p.cad_referencia_id AND qe.tamanho = p.tamanho
         LEFT JOIN UltDataExped ud ON ud.lote = p.lote
-        WHERE ud.UltDataExpedicao > '2025-01-01'
+        WHERE p.lote not in (select lote from VDA_Ped_Dev_Can vpdc where vpdc.Data_Conclusao_Expedicao = '1901-01-01 00:00:00.000') 
           AND p.tamanho IS NOT NULL
           AND p.lote IS NOT NULL
         ORDER BY p.lote DESC
