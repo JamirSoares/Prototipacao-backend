@@ -8,7 +8,7 @@ const router = express.Router();
  * Retorna 100 registros por padrão, ou todos se tiver filtros
  */
 router.get("/", async (req, res) => {
-  const { lote, ordem, cad_referencia_id, setor } = req.query;
+  const { lote, ordem, cad_referencia_id, setor, sortKey, sortDir } = req.query;
 
   try {
     const pool = await connectDB();
@@ -46,6 +46,11 @@ router.get("/", async (req, res) => {
     // 🔹 Se não houver filtros → limita a 100
     const limit = lote || ordem || cad_referencia_id || setor ? "" : "TOP 100";
 
+    const allowed = ['Id','lote','ordem','lote_marca','cad_referencia_id','descricao_referencia','qtd','vlr_serv_ref','valor_servico','status','conclusao','fornecedor_estoque','setor_tipo','processo','tipo_operacao','created_at'];
+    const key = allowed.includes(sortKey) ? sortKey : null;
+    const dir = sortDir && sortDir.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+    const order = key ? ` ORDER BY ${key} ${dir}` : '';
+
     const query = `
       SELECT ${limit}
     Id,
@@ -65,7 +70,7 @@ router.get("/", async (req, res) => {
     ISNULL(tipo_operacao, '0') AS tipo_operacao,
     ISNULL(created_at, '1900-01-01') AS created_at
 FROM RelatorioPR
-      ${where}
+      ${where}${order}
     `;
 
     const result = await request.query(query);
@@ -130,6 +135,29 @@ router.get("/filtros", async (req, res) => {
   } catch (err) {
     console.error("Erro ao buscar filtros:", err);
     res.status(500).json({ error: "Erro ao buscar filtros" });
+  }
+});
+
+// GET /api/relatorioPR/filtros/setores
+// Retorna lista distinta de setor_tipo disponível
+router.get("/filtros/setores", async (req, res) => {
+  try {
+    const pool = await connectDB();
+    const request = pool.request();
+    const query = `
+      SELECT DISTINCT setor_tipo
+      FROM IMAGEMUNIFORMES_pBI.dbo.RelatorioPR
+      WHERE setor_tipo IS NOT NULL AND LTRIM(RTRIM(setor_tipo)) <> ''
+      ORDER BY setor_tipo
+    `;
+    console.log(query)
+    const result = await request.query(query);
+    // Return array of strings
+    const setores = (result.recordset || []).map(r => r.setor_tipo);
+    res.json(setores);
+  } catch (err) {
+    console.error("Erro ao buscar setores:", err);
+    res.status(500).json({ error: "Erro ao buscar setores" });
   }
 });
 

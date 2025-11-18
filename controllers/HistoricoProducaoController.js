@@ -26,7 +26,7 @@ export const create = async (req, res) => {
             .input('tempoPrevisto', mssql.Decimal(10, 2), tempoPrevisto)
             .input('tempoRealizado', mssql.Decimal(10, 2), tempoRealizado)
             .query(`
-                INSERT INTO ${TABLE_NAME} (registro_id, hora, previsto, [real], retrabalho, operacao, referencia, TempoPeca, pessoasCelula, tempoAcabamento, pessoaAcabamento, custoFaccao, tempoPrevisto, tempoRealizado, atualizado_em)
+                INSERT INTO ${TABLE_NAME} (registro_id, hora, previsto, [real], retrabalho, operacao, ltrim(rtrim(upper(referencia))), TempoPeca, pessoasCelula, tempoAcabamento, pessoaAcabamento, custoFaccao, tempoPrevisto, tempoRealizado, atualizado_em)
                 OUTPUT INSERTED.${ID_FIELD}
                 VALUES (@registro_id, @hora, @previsto, @real, @retrabalho, @operacao, @referencia, @TempoPeca, @pessoasCelula, @tempoAcabamento, @pessoaAcabamento, @custoFaccao, @tempoPrevisto, @tempoRealizado, GETDATE())
             `);

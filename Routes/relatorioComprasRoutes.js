@@ -30,7 +30,7 @@ const columnTypes = {
 
 // GET /api/relatorioCompras?numeroDocumento=&fornecedor=&cadReferenciaId=
 router.get("/", async (req, res) => {
-  const { numeroDocumento, fornecedor, cadReferenciaId } = req.query;
+  const { numeroDocumento, fornecedor, cadReferenciaId, sortKey, sortDir } = req.query;
 
   try {
     const pool = await connectDB();
@@ -49,6 +49,13 @@ router.get("/", async (req, res) => {
       request.input("cadReferenciaId", mssql.NVarChar, cadReferenciaId); 
       where += " AND cadReferenciaId = @cadReferenciaId"; 
     }
+
+    const allowed = [
+      'numeroDocumento','emissaoData','entregaData','fornecedor','cadReferenciaId','descricaoProduto','descricaoCor','fator','unidadeCompra','quantidade','cadProdutoId','unitarioValorItem','nomeGrupo','oldSubGrupo1','cadGrupoId','quantidadeConvertidaKg','precoCustoProduto','precoCompraUnitario','valorCompra','valorPrevisto','economia'
+    ];
+    const key = allowed.includes(sortKey) ? sortKey : null;
+    const dir = sortDir && sortDir.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+    const order = key ? ` ORDER BY ${key} ${dir}` : ' ORDER BY numeroDocumento, cadReferenciaId';
 
     const query = `
       SELECT TOP 500 
@@ -76,7 +83,7 @@ router.get("/", async (req, res) => {
         CAST(ISNULL(economia, 0) AS DECIMAL(18,4)) AS economia
       FROM IMAGEMUNIFORMES_pBI.dbo.RelatorioCompras
       ${where}
-      ORDER BY numeroDocumento, cadReferenciaId
+      ${order}
     `;
     
     const result = await request.query(query);

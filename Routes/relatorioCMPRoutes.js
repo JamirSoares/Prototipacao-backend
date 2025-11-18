@@ -1,5 +1,8 @@
 import express from "express";
-import { connectDB, mssql } from '../config/db.js';
+import {
+  connectDB,
+  mssql
+} from '../config/db.js';
 
 const router = express.Router();
 
@@ -11,12 +14,12 @@ const columnTypes = {
   "Material_Ref_Id": mssql.VarChar,
   "Material Referência": mssql.NVarChar,
   "Unidade": mssql.NVarChar,
-  "Preço de Custo": mssql.Decimal(18,2),
+  "Preço de Custo": mssql.Decimal(18, 2),
   "Quantidade Material Previsto": mssql.Float,
   "QTD REAL": mssql.Float,
-  "Custo Total MaterialPrevisto": mssql.Decimal(18,2),
-  "Custo Total MaterialGasto": mssql.Decimal(18,2),
-  "Economico": mssql.Decimal(18,2),
+  "Custo Total MaterialPrevisto": mssql.Decimal(18, 2),
+  "Custo Total MaterialGasto": mssql.Decimal(18, 2),
+  "Economico": mssql.Decimal(18, 2),
   "Grupo do Material Ref": mssql.NVarChar,
   "MesAno": mssql.Date,
   "Cliente": mssql.VarChar
@@ -24,16 +27,38 @@ const columnTypes = {
 
 // GET /api/relatorioCMP?LOTE=&Ordem=&Material_Ref_Id=
 router.get("/", async (req, res) => {
-  const { LOTE, Ordem, Material_Ref_Id } = req.query;
+  const {
+    LOTE,
+    Ordem,
+    Material_Ref_Id,
+    sortKey,
+    sortDir
+  } = req.query;
 
   try {
     const pool = await connectDB();
     const request = pool.request();
 
     let where = "WHERE 1=1";
-    if (LOTE) { request.input("LOTE", mssql.Int, LOTE); where += " AND LOTE = @LOTE"; }
-    if (Ordem) { request.input("Ordem", mssql.Int, Ordem); where += " AND Ordem = @Ordem"; }
-    if (Material_Ref_Id) { request.input("Material_Ref_Id", mssql.VarChar, Material_Ref_Id); where += " AND Material_Ref_Id = @Material_Ref_Id"; }
+    if (LOTE) {
+      request.input("LOTE", mssql.Int, LOTE);
+      where += " AND LOTE = @LOTE";
+    }
+    if (Ordem) {
+      request.input("Ordem", mssql.Int, Ordem);
+      where += " AND Ordem = @Ordem";
+    }
+    if (Material_Ref_Id) {
+      request.input("Material_Ref_Id", mssql.VarChar, Material_Ref_Id);
+      where += " AND Material_Ref_Id = @Material_Ref_Id";
+    }
+
+    const allowedCols = [
+      'ID', 'LOTE', 'Ordem', 'ID MATERIA PRIMA', 'Material_Ref_Id', 'Material Referência', 'Unidade', 'Preço de Custo', 'Quantidade Material Previsto', 'QTD REAL', 'Custo Total MaterialPrevisto', 'Custo Total MaterialGasto', 'Economico', 'Grupo do Material Ref', 'MesAno', 'Cliente'
+    ];
+    const key = allowedCols.includes(sortKey) ? sortKey : null;
+    const dir = sortDir && sortDir.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+    const order = key ? ` ORDER BY [${key}] ${dir}` : '';
 
     const query = `
      SELECT TOP 500 
@@ -54,12 +79,14 @@ router.get("/", async (req, res) => {
     ISNULL(MesAno, '1900-01-01') AS MesAno,
     ISNULL(Cliente, '0') AS Cliente
 FROM RelatorioCMP
-    ${where}`
+    ${where}${order}`
     const result = await request.query(query);
     res.json(result.recordset);
   } catch (err) {
     console.error("Erro ao buscar registros:", err);
-    res.status(500).json({ error: "Erro ao buscar registros" });
+    res.status(500).json({
+      error: "Erro ao buscar registros"
+    });
   }
 });
 
@@ -75,14 +102,23 @@ router.get("/filtros", async (req, res) => {
     res.json(result.recordset);
   } catch (err) {
     console.error("Erro ao buscar filtros:", err);
-    res.status(500).json({ error: "Erro ao buscar filtros" });
+    res.status(500).json({
+      error: "Erro ao buscar filtros"
+    });
   }
 });
 
 router.post("/update", async (req, res) => {
-  const { ID, ...fields } = req.body;
-  if (!ID) return res.status(400).json({ error: "Campo 'ID' é obrigatório" });
-  if (!fields || Object.keys(fields).length === 0) return res.status(400).json({ error: "Nenhum campo enviado para atualizar" });
+  const {
+    ID,
+    ...fields
+  } = req.body;
+  if (!ID) return res.status(400).json({
+    error: "Campo 'ID' é obrigatório"
+  });
+  if (!fields || Object.keys(fields).length === 0) return res.status(400).json({
+    error: "Nenhum campo enviado para atualizar"
+  });
 
   // Cria aliases sem espaço para parâmetros
   const setClauses = Object.keys(fields)
@@ -96,7 +132,9 @@ router.post("/update", async (req, res) => {
 
     for (const key of Object.keys(fields)) {
       const type = columnTypes[key];
-      if (!type) return res.status(400).json({ error: `Coluna inválida: ${key}` });
+      if (!type) return res.status(400).json({
+        error: `Coluna inválida: ${key}`
+      });
       request.input(`param_${key.replace(/\s/g, "_")}`, type, fields[key]);
     }
 
@@ -106,12 +144,18 @@ router.post("/update", async (req, res) => {
       WHERE ID = @ID
     `;
     await request.query(query);
-    res.json({ success: true, message: "Registro atualizado com sucesso" });
+    res.json({
+      success: true,
+      message: "Registro atualizado com sucesso"
+    });
   } catch (err) {
     console.error("Erro ao atualizar registro:", err);
-    res.status(500).json({ error: "Erro ao atualizar registro" });
+    res.status(500).json({
+      error: "Erro ao atualizar registro"
+    });
   }
-});/**
+});
+/**
  * POST /api/relatorioCMP/generate
  * Gera registros no RelatorioCMP, evitando duplicados
  */
@@ -128,7 +172,9 @@ router.post("/generate", async (req, res) => {
       `);
 
     if (check.recordset[0].count > 0) {
-      return res.status(200).json({ message: "Registros já existentes, nada inserido" });
+      return res.status(200).json({
+        message: "Registros já existentes, nada inserido"
+      });
     }
 
     // Executa o INSERT
@@ -157,8 +203,7 @@ router.post("/generate", async (req, res) => {
             SELECT lote, MAX(Data_Conclusao_Expedicao) AS UltDataExpedicao, MAX(Lanc_Documento_Id) AS lanc_identificador
             FROM VDA_Ped_Dev_Can
             GROUP BY lote
-        )
-INSERT INTO IMAGEMUNIFORMES_pBI.dbo.RelatorioCMP
+        )INSERT INTO IMAGEMUNIFORMES_pBI.dbo.RelatorioCMP
 (
     LOTE, 
     Ordem, 
@@ -200,9 +245,12 @@ FROM producao p
     LEFT JOIN Grupo_Material_Ref gmr 
         ON gmr.Grupo_Material_Ref_Id = mr.Grupo_Material_Ref_Id
     LEFT JOIN UltDataExped ud ON ud.lote = p.lote
+    LEFT JOIN CAD_GRUPO CG1 ON cg1.old_subgrupo1 = cr.cad_grupo_id
 WHERE 
     p.lote IS NOT NULL 
     AND gmr.grupo_material_ref_id = 5
+    AND p.lote not in (select distinct lote  from VDA_Ped_Dev_Can vpdc where vpdc.Data_Conclusao_Expedicao = '1901-01-01 00:00:00.000' and vpdc.Tipo_Operacao_Documento  = 'Pedido de Venda') 
+    and CG1.NOME in ('MALHA','MATELASSADO','TECIDO DIVERSOS')
 GROUP BY 
     p.lote, 
     p.ordem, 
@@ -216,10 +264,15 @@ ORDER BY
     p.lote;
       `);
 
-    res.json({ success: true, message: "Registros CMP gerados com sucesso" });
+    res.json({
+      success: true,
+      message: "Registros CMP gerados com sucesso"
+    });
   } catch (err) {
     console.error("Erro ao gerar registros CMP:", err);
-    res.status(500).json({ error: "Erro ao gerar registros CMP" });
+    res.status(500).json({
+      error: "Erro ao gerar registros CMP"
+    });
   }
 });
 

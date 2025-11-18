@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon --quiet server.js"
+    "dev": "nodemon --quiet server.js",
+    "test-batch": "node tests/batch_test.js"
   },
   "dependencies": {
     "axios": "^1.12.2",

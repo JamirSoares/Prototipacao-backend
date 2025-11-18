@@ -4,7 +4,6 @@ import fetch from 'node-fetch';
 
 const router = express.Router();
 
-// Token da API CEP Aberto (se necessário)
 const CEP_ABERTO_TOKEN = "8700a97d0ba03c75506e1a24e610d50b";
 
 router.get("/:cep", async (req, res) => {

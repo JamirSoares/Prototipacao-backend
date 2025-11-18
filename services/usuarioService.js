@@ -23,12 +23,12 @@ export async function getAll() {
       p.nome AS permissao_nome,
       (
         SELECT STRING_AGG(a.nome, ',')
-        FROM role_acoes ra
-        JOIN acoes a ON a.id = ra.acao_id
+        FROM dbo.role_acoes ra
+        left JOIN dbo.acoes a ON a.id = ra.acao_id
         WHERE ra.role_id = p.id
       ) AS permissoes
     FROM usuarios u
-    JOIN permissoes p ON u.permissao_id = p.id
+    JOIN dbo.permissoes p ON u.permissao_id = p.id
     ORDER BY u.id DESC
   `);
 
